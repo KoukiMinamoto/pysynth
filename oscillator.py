@@ -35,6 +35,12 @@ class SineWave():
         out = self._sine(freq, offsets, amp, length)
         
         return out
+    def _preplay(self):
+        pass
+    
+    def _postplay(self):
+        pass
+    
     
     def _sine(self, freq, offsets, amp, length):
         out = np.zeros(length, dtype=np.float32)

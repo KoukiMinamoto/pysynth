@@ -34,6 +34,11 @@ class MidiFromPCkey():
         self._KEY2MIDI = {"a":60, "w":61, "s":62, "e":63, "d":64, "f":65, "t":66, "g":67, "y":68, "h":69, "u":70, "j":71, "k":72}
         self._PGKEY = [K_a, K_w, K_s, K_e, K_d, K_f, K_t, K_g, K_y, K_h, K_u, K_j, K_k]
         self._SCREEN_SIZE = (640, 480)
+        
+        self.note_on = [0] * 128
+        self.note_num = [0] * 128
+        self.offset = [0] * 128
+        self.velocity = [0] * 128
     
     def _standby(self, pitch=440, rate=44100, bufsize=500):
         self._PITCH = pitch

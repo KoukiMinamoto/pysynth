@@ -48,6 +48,8 @@ class Series():
                 + module : 追加するモジュール
         """
         self.model.append(module)
+        
+        return module
  
         
     def completed(self):
@@ -137,8 +139,28 @@ class Cabinet():
         out = self.wave
         
         return out
+
+
+# In[1]:
+
+
+class Parameter():
+    
+    def __init__(self, ini_val):
+        self.values = [ini_val] * 128
+        self.control = Env(A=0., D=0., S=1., R=0., ini_val=ini_val, rang=1.)
         
-        
+    def setval(self, new_val, num=-1):
+        if num == -1:
+            self.values = [new_val] * 128
+        else:
+            self.values[num] = newval
+    
+    def getval(self):
+        return self.values
+    
+    def update(self):
+        self.values = self.control._update(self.values)
         
 
 
