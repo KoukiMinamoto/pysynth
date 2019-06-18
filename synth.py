@@ -52,7 +52,7 @@ class Series():
         
     def completed(self):
         self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(format=pyaudio.paFloat32, channels=1, 
+        self.stream = self.p.open(format=pyaudio.paInt16, channels=1, 
                                     frames_per_buffer=self._BUF_SIZE, rate=self._RATE, output=True)
         
         for module in self.model:
@@ -68,6 +68,8 @@ class Series():
                 module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
             elif module.name == "Cabinet":
                 module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
+            elif module.name == "WizavoPCM":
+                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
         
     def play(self):
         """出力された音声データのみ取得するメソッド"""
@@ -80,13 +82,14 @@ class Series():
                     self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)
                 elif module.name == "SquareWave":
                     self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)    
+                elif module.name == "WizavoPCM":
+                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)  
                 elif module.name == "MidiFromPCkey":
                     self.freqs, self.offsets, self.amp = module._play()
                 elif module.name == "SimpleAmp":
                     module._play(self.wave)
                 elif module.name == "Cabinet":
                     self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)
-            print("time: ", time.time()-start)
 
 
 # In[7]:
@@ -119,6 +122,8 @@ class Cabinet():
                 module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
             elif module.name == "TriangleWave":
                 module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
+            elif module.name == "WizavoPCM":
+                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
             elif module.name == "SquareWave":
                 module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
         return [self.name]
@@ -132,6 +137,8 @@ class Cabinet():
             elif self.modules[i].name == "TriangleWave":
                 self.wave = self.wave + (self.ratio[i]/self.ratio_sum) * self.modules[i]._play(freq, offsets, amp, length)
             elif self.modules[i].name == "SquareWave":
+                self.wave = self.wave + (self.ratio[i]/self.ratio_sum) * self.modules[i]._play(freq, offsets, amp, length)
+            elif self.modules[i].name == "WizavoPCM":
                 self.wave = self.wave + (self.ratio[i]/self.ratio_sum) * self.modules[i]._play(freq, offsets, amp, length)
         
         out = self.wave

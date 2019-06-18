@@ -18,6 +18,8 @@ class SimpleAmp():
         self.name = "SimpleAmp"
         self.val = None
         
+        self.flag = False
+        
         self._PITCH = 440
         self._RATE = 44100
         self._BUF_SIZE = 500
@@ -27,6 +29,7 @@ class SimpleAmp():
         self._RATE = rate
         self._BUF_SIZE = bufsize
         self.stream = stream
+        
         
         return [self.name]
     
@@ -38,8 +41,15 @@ class SimpleAmp():
             output = wave
         else:
             pass
-        
-        self.stream.write(output.astype(np.float32).tostring())
+        if self.stream.is_active():
+            #if self.flag == True:
+             #   self.thread1.join()
+              #  self.flag == False
+                
+            #self.thread1 = threading.Thread(target=self.stream.write, args=(output,)) 
+            #self.thread1.start()
+            #self.flag = True
+            self.stream.write(output)
 
 
 # In[ ]:

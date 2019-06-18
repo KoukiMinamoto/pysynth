@@ -98,6 +98,7 @@ class MidiFromPCkey():
                     # 長押しされているキーとして、そのインデックスを格納。
                     long_press_index.append(index)
                     # そのインデックスに対応したoffsetにBUF_SIZE分のオフセットを追加
+                    print("bufsize: ", self._BUF_SIZE)
                     self.offsets[index] = self.offsets[index] + self._BUF_SIZE
                 else:
                     reset_keys = []# offsetにリセットをかけるべきキーに対応したインデックスを格納
@@ -114,8 +115,7 @@ class MidiFromPCkey():
                             
             # 現在押されているMIDIノートをpre_keysに更新
             self.pre_keys = midi_notes
-            #print(self.freqs, self.offsets, midi_notes)
-        # print(self.freqs, self.offsets)    
+        print(self.freqs, self.offsets)    
         return self.freqs, self.offsets, 0.25
 
 
