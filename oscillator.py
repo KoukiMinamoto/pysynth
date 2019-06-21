@@ -1,192 +1,161 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[3]:
 
 
 import numpy as np
 import scipy.signal
 import wave
+from synth import *
 
 
-# In[2]:
+# In[15]:
 
 
 class SineWave():
     """ * サイン波を生成するモジュール *
-        arg: 周波数, オフセット
-        return: 波形データ配列(np.arry)
+        -args: 
+            Note_ON/OFF: list(128, 1)
+            Velocity:    list(128, 1)
+            
+        -return: wave_data: list(128, BUFSIZE)
     """
-    def __init__(self):
+    def __init__(self, interval=0, fine=0):
         self.name = "SineWave"
-        self.val = None
+        
+        self.interval = Parameter(interval, self, 0, 12, name="interval", controllable=True)
+        self.fine = Parameter(fine, self, 0, 100,  name="fine", controllable=True)
+        self.wave_data = Parameter(None, self, -32768, 32767, "wave_data")
+        self.freq = Parameter(0, self, 0.0, None, "freq")
         
         self._PITCH = 440
         self._RATE = 44100
         self._BUF_SIZE = 500
-
-    def _standby(self, pitch=440, rate=44100, bufsize=500):
+        
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
+        
+        
+    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+        self.parent = synth
         self._PITCH = pitch
         self._RATE = rate
         self._BUF_SIZE = bufsize
-        
-        return [self.name]
     
-    def _play(self, freq, offsets, amp, length):
-        out = self._sine(freq, offsets, amp, length)
+    def play(self):
+        self._sine()
         
-        return out
     
-    def _sine(self, freq, offsets, amp, length):
-        out = np.zeros(length, dtype=np.float32)
-        length = int(length)
+    def _sine(self):
+        wave_data = []
+        offset = self.parent.offset
+        vel = self.parent.velocity
+        freq = self.freq
         
-        if len(freq) > 0:
-            for i in range(len(freq)):
-                factor = float(freq[i]) * (np.pi*2)/self._RATE
-                wave = []
-                wave.append(np.sin(np.arange(offsets[i], offsets[i]+length) * factor))
-                wave = np.concatenate(wave) * amp
-                out = out + wave
-        else:
-            pass
-        
-        return out
-
-class TriangleWave():
-    """ * サイン波を生成するモジュール *
-        arg: 周波数, オフセット
-        return: 波形データ配列(np.arry)
-    """
-    def __init__(self):
-        self.name = "SineWave"
-        self.val = None
-        
-        self._PITCH = 440
-        self._RATE = 44100
-        self._BUF_SIZE = 500
-
-    def _standby(self, pitch=440, rate=44100, bufsize=500):
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
-        
-        return [self.name]
-    
-    def _play(self, freq, offsets, amp, length):
-        out = self._sine(freq, offsets, amp, length)
-        
-        return out
-    
-    def _sine(self, freq, offsets, amp, length):
-        out = np.zeros(length, dtype=np.float32)
-        length = int(length)
-        
-        if len(freq) > 0:
-            for i in range(len(freq)):
-                factor = float(freq[i]) * (np.pi*2)/self._RATE
-                wave = []
-                wave.append(scipy.signal.sawtooth(np.arange(offsets[i], offsets[i]+length) * factor))
-                wave = np.concatenate(wave) * amp
-                out = out + wave
-        else:
-            pass
-        
-        return out
-
-
-# In[3]:
-
-
-class SquareWave():
-    """ * サイン波を生成するモジュール *
-        arg: 周波数, オフセット
-        return: 波形データ配列(np.arry)
-    """
-    def __init__(self):
-        self.name = "SquareWave"
-        self.val = None
-        
-        self._PITCH = 440
-        self._RATE = 44100
-        self._BUF_SIZE = 500
-
-    def _standby(self, pitch=440, rate=44100, bufsize=500):
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
-        
-        return [self.name]
-    
-    def _play(self, freq, offsets, amp, length):
-        out = self._sine(freq, offsets, amp, length)
-        
-        return out
-    
-    def _sine(self, freq, offsets, amp, length):
-        out = np.zeros(length, dtype=np.float32)
-        length = int(length)
-        
-        if len(freq) > 0:
-            for i in range(len(freq)):
-                factor = float(freq[i]) * (np.pi*2)/self._RATE
-                wave = []
-                wave.append(scipy.signal.square(np.arange(offsets[i], offsets[i]+length) * factor))
-                wave = np.concatenate(wave) * amp
-                out = out + wave
-        else:
-            pass
-        
-        return out
-
-
-# In[1]:
-
-
-class WizavoPCM():
-    """ * サイン波を生成するモジュール *
-        arg: 周波数, オフセット
-        return: 波形データ配列(np.arry)
-    """
-    def __init__(self):
-        self.name = "WizavoPCM"
-        self.val = None
-        
-        self._PITCH = 440
-        self._RATE = 44100
-        self._BUF_SIZE = 500
-        self.wavfile = "./wizavo_outfile/men/a-.wav"
-        # WAVファイルを開く
-        self.wr = wave.open(self.wavfile, "rb")
-        self.data = self.wr.readframes(self.wr.getnframes())
-
-    def _standby(self, pitch=440, rate=44100, bufsize=500):
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
-        
-        return [self.name]
-    
-    def _play(self, freq, offsets, amp, length):
-        out = self._sing(freq, offsets, amp, length)
-        
-        return out
-    
-    def _sing(self, freq, offsets, amp, length):
-        num_data = np.zeros(length, dtype=np.float32)
-        
-        if len(freq) > 0:
-            print("offsets: ", offsets[0])
-            if offsets[0] >= self.wr.getnframes():
+        for i in range(128):
+            if offset.get(i) != -1:
+                factor = float(freq.get(i)) * (np.pi*2) / self._RATE
+                wave = np.sin(np.arange(offset.get(i), offset.get(i)+self._BUF_SIZE) * factor) * 32767/127 * vel.get(i)
+                self.parent.wave_data.fix(wave, i)
+            elif offset.get(i) == -1:
                 pass
-            else:
-                num_data = np.frombuffer(self.data, count=self._BUF_SIZE, offset=offsets[0], dtype = np.int16)
-        
-        return num_data
 
 
 # In[ ]:
 
 
+class SquareWave():
+    
+    def __init__(self, interval=0, fine=0):
+        self.name = "SineWave"
+        
+        self.interval = Parameter(interval, self, 0, 12, name="interval", controllable=True)
+        self.fine = Parameter(fine, self, 0, 100,  name="fine", controllable=True)
+        self.wave_data = Parameter(None, self, -32768, 32767, "wave_data")
+        self.freq = Parameter(0, self, 0.0, None, "freq")
+        
+        self._PITCH = 440
+        self._RATE = 44100
+        self._BUF_SIZE = 500
+        
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
+        
+        
+    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+        self.parent = synth
+        self._PITCH = pitch
+        self._RATE = rate
+        self._BUF_SIZE = bufsize
+    
+    def play(self):
+        self._sine()
+        
+    
+    def _sine(self):
+        wave_data = []
+        offset = self.parent.offset
+        vel = self.parent.velocity
+        freq = self.freq
+        
+        for i in range(128):
+            if offset.get(i) != -1:
+                factor = float(freq.get(i)) * (np.pi*2) / self._RATE
+                wave = scipy.signal.square(np.arange(offset.get(i), offset.get(i)+self._BUF_SIZE) * factor) * 32767/127 * vel.get(i)
+                self.parent.wave_data.fix(wave, i)
+            elif offset.get(i) == -1:
+                pass
 
+
+# In[ ]:
+
+
+class TriangleWave():
+    
+    def __init__(self, interval=0, fine=0):
+        self.name = "SineWave"
+        
+        self.interval = Parameter(interval, self, 0, 12, name="interval", controllable=True)
+        self.fine = Parameter(fine, self, 0, 100,  name="fine", controllable=True)
+        self.wave_data = Parameter(None, self, -32768, 32767, "wave_data")
+        self.freq = Parameter(0, self, 0.0, None, "freq")
+        
+        self._PITCH = 440
+        self._RATE = 44100
+        self._BUF_SIZE = 500
+        
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
+        
+        
+    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+        self.parent = synth
+        self._PITCH = pitch
+        self._RATE = rate
+        self._BUF_SIZE = bufsize
+    
+    def play(self):
+        self._sine()
+        
+    
+    def _sine(self):
+        wave_data = []
+        offset = self.parent.offset
+        vel = self.parent.velocity
+        freq = self.freq
+        
+        for i in range(128):
+            if offset.get(i) != -1:
+                factor = float(freq.get(i)) * (np.pi*2) / self._RATE
+                wave = scipy.signal.sawtooth(np.arange(offset.get(i), offset.get(i)+self._BUF_SIZE) * factor) * 32767/127 * vel.get(i)
+                self.parent.wave_data.fix(wave, i)
+            elif offset.get(i) == -1:
+                pass
 

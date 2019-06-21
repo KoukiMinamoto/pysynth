@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[12]:
 
 
 import numpy as np
@@ -12,12 +12,128 @@ from pygame.locals import *
 import time
 from error import *
 import sys
+from interface import *
+from controller import *
+
+
+# In[ ]:
+
+
+class Series(object):
+    """ * モジュールの直列接続をするクラス *
+        args:
+            + pitch=440 : チューニングピッチ
+            + rate=44100 : サンプリングレート
+            + bufsize=500 : バッファサイズ
+    """
+    def __init__(self, pitch=440, rate=44100, bufsize=500):
+        self._PITCH = pitch
+        self._RATE = rate
+        self._BUF_SIZE = bufsize
+        self.model = []
+        self.controller = []
+        self.pre_note_on = [0] * 128
+        self.power = True
+        
+        self.note_on = Parameter(0, self, 0, 1, "note_on")
+        self.velocity = Parameter(0, self, 0, 127, "velocity")
+        self.wave_data = Parameter(np.zeros(self._BUF_SIZE), self, -32768, 32767, "wave_data")
+        self.offset = Parameter(-1, self, -1, None, "offset")
+        self.R_flag = Parameter(False, self, name="R_flag")
+        
+        
+    def implement(self, module):
+        module_name = module.__module__
+        if module_name != "controller":
+            raise InvalidModuleImplement("Can implement modules only from controller.")
+        else:
+            self.controller.append(module)
+            
+    def stack(self, module):
+        module_name = module.__module__
+        class_name = module.__class__.__name__
+        
+        if len(self.model) == 0:
+            if module_name == "interface":
+                self.model.append(module)
+            else:
+                raise InvalidModuleStack("First module must be from interface.")
+        elif len(self.model) == 1:
+            if module_name == "oscillator":
+                self.model.append(module)
+            elif class_name == "cabinet":
+                if module.mode == "osc":
+                    self.model.append(module)
+                else:
+                    raise InvalidModuleStack("Cabinet doesn't have oscillator module.")
+            else:
+                raise InvalidModuleStack("Second module must be from oscillator")
+        elif len(self.model) >= 2:
+            if module_name == "interface":
+                raise InvalidModuleStack("Cannot stack interface module twice.")
+            elif module_name == "oscillator":
+                raise InvalidModuleStack("Cannot stack oscillator module twice.")
+            elif class_name == "cabinet":
+                if module.mode == "osc":
+                    raise InvalidModuleStack("Cabinet has oscillator stack.")
+            else:
+                self.model.append(module)
+        
+        
+        return module
+                
+        
+    def completed(self):
+        last_module = self.model[len(self.model)-1].__module__
+        if last_module != "amplifier":
+            raise InvalidModuleStack("Amplifier module is NOT stacked at last layer.")
+        
+        self.p = pyaudio.PyAudio()
+        self.stream = self.p.open(format=pyaudio.paInt16, channels=1, 
+                                    frames_per_buffer=self._BUF_SIZE, rate=self._RATE, output=True)
+        
+        for module in self.model:
+            module.standby(synth=self, pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
+        for control in self.controller:
+            control.standby(synth=self)
+            
+        print("Your Synth is completed!!")
+        print("Structure: ", self.model)
+        
+        
+    def play(self):
+        while self.power == True:
+            for module in self.model:
+                module.play()
+                for control in self.controller:
+                    control.update(module)
+            out_data = np.zeros(self._BUF_SIZE)
+            for i in range(128):
+                out_data = out_data + self.model[len(self.model)-1].amp.get(i)
+            
+            for i in range(128):
+                self.pre_note_on[i] = self.note_on.get(i)
+            
+            if self.stream.is_active():
+                self.stream.write(out_data.astype(np.int16).tostring())
+                
+        self.abandon()
+        
+        return True
+        
+    def abandon(self):
+        pygame.quit()   
+        self.stream.stop()
+        self.stream.close()
+        self.p.terminate()
+        
+            
 
 
 # In[5]:
 
 
-class Series():
+class _Series():
     """ * モジュールの直列接続をするクラス *
         args:
             + pitch=440 : チューニングピッチ
@@ -144,13 +260,42 @@ class Cabinet():
         out = self.wave
         
         return out
-        
-        
-        
 
 
 # In[ ]:
 
 
-
+class Parameter():
+    
+    def __init__(self, value, parent, minval=None, maxval=None, name='', controllable=False):
+        self.name = name
+        self.values = [value for x in range(128)]
+        self.inival = [value for x in range(128)]
+        self.parent = parent
+        self.minval = minval
+        self.maxval = maxval
+        self.controllable = controllable
+        
+        
+    def replace(self, value):
+        self.values = [value for x in range(128)]
+        
+    def fix(self, value, note_num, buf_num=None):
+        if isinstance(value, np.ndarray):
+            self.values[note_num] = np.copy(value)
+        else:
+            if buf_num != None and isinstance(self.values[0], np.ndarray):
+                self.values[note_num][buf_num] = value
+            elif buf_num == None:
+                self.values[note_num] = value
+        
+    def get(self, note_num, buf_num=None):
+        if buf_num != None:
+            return self.values[note_num][buf_num]
+        else:
+            return self.values[note_num]
+    
+    def getall(self):
+        return self.values
+        
 
