@@ -1,6 +1,6 @@
 pySynth
 ====
-- pySynth - Code-based Synthesizer on Python.
+pySynth - Code-based Synthesizer on Python.
 
 ## Description
 - Most soft synthesizers are processing on VST or AU environments on DAW software. 
@@ -85,3 +85,5 @@ You may need to install other dependencies. In that case, reference some detail 
 Detail and other example are in pysynth/example. Please refer to that.
     
 ## Author
+- Name: FooU*
+- Email: tomatomusicstudio@gmail.com
