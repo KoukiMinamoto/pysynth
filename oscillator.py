@@ -33,17 +33,12 @@ class SineWave():
         self._RATE = 44100
         self._BUF_SIZE = 500
         
-        for i in range(128):
-            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
-            freq = freq * np.power(2, self.fine.get(i)/100)
-            self.freq.fix(freq, i)
         
-        
-    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+    def standby(self, synth):
         self.parent = synth
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
+        self._PITCH = self.parent._PITCH
+        self._RATE = self.parent._RATE
+        self._BUF_SIZE = self.parent._BUF_SIZE
     
     def play(self):
         self._sine()
@@ -53,6 +48,11 @@ class SineWave():
         wave_data = []
         offset = self.parent.offset
         vel = self.parent.velocity
+        
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
         freq = self.freq
         
         for i in range(128):
@@ -81,17 +81,12 @@ class SquareWave():
         self._RATE = 44100
         self._BUF_SIZE = 500
         
-        for i in range(128):
-            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
-            freq = freq * np.power(2, self.fine.get(i)/100)
-            self.freq.fix(freq, i)
         
-        
-    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+    def standby(self, synth):
         self.parent = synth
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
+        self._PITCH = self.parent._PITCH
+        self._RATE = self.parent._RATE
+        self._BUF_SIZE = self.parent._BUF_SIZE
     
     def play(self):
         self._sine()
@@ -101,6 +96,10 @@ class SquareWave():
         wave_data = []
         offset = self.parent.offset
         vel = self.parent.velocity
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
         freq = self.freq
         
         for i in range(128):
@@ -129,17 +128,12 @@ class TriangleWave():
         self._RATE = 44100
         self._BUF_SIZE = 500
         
-        for i in range(128):
-            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
-            freq = freq * np.power(2, self.fine.get(i)/100)
-            self.freq.fix(freq, i)
         
-        
-    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+    def standby(self, synth):
         self.parent = synth
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
+        self._PITCH = self.parent._PITCH
+        self._RATE = self.parent._RATE
+        self._BUF_SIZE = self.parent._BUF_SIZE
     
     def play(self):
         self._sine()
@@ -149,6 +143,10 @@ class TriangleWave():
         wave_data = []
         offset = self.parent.offset
         vel = self.parent.velocity
+        for i in range(128):
+            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
+            freq = freq * np.power(2, self.fine.get(i)/100)
+            self.freq.fix(freq, i)
         freq = self.freq
         
         for i in range(128):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[ ]:
 
 
 import numpy as np
@@ -59,13 +59,13 @@ class Series(object):
             else:
                 raise InvalidModuleStack("First module must be from interface.")
         elif len(self.model) == 1:
-            if module_name == "oscillator":
+            if module_name == "oscillator" or module_name == "sampler":
                 self.model.append(module)
             elif class_name == "cabinet":
                 if module.mode == "osc":
                     self.model.append(module)
                 else:
-                    raise InvalidModuleStack("Cabinet doesn't have oscillator module.")
+                    raise InvalidModuleStack("Cabinet doesn't have oscillator module or sampler module.")
             else:
                 raise InvalidModuleStack("Second module must be from oscillator")
         elif len(self.model) >= 2:
@@ -93,7 +93,7 @@ class Series(object):
                                     frames_per_buffer=self._BUF_SIZE, rate=self._RATE, output=True)
         
         for module in self.model:
-            module.standby(synth=self, pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
+            module.standby(synth=self)
         for control in self.controller:
             control.standby(synth=self)
             
@@ -130,88 +130,17 @@ class Series(object):
             
 
 
-# In[5]:
-
-
-class _Series():
-    """ * モジュールの直列接続をするクラス *
-        args:
-            + pitch=440 : チューニングピッチ
-            + rate=44100 : サンプリングレート
-            + bufsize=500 : バッファサイズ
-    """
-    
-    _PITCH = 440
-    _RATE = 44100
-    _BUF_SIZE = 500
-    _PGKEY2KEY = {K_a:'a', K_w:'w', K_s:'s' , K_e:'e', K_d:'d', K_f:'f', K_t:'t', K_g:'g', K_y:'y', K_h:'h', K_u:'u', K_j:'j', K_k:'k'}
-    _KEY2MIDI = {"a":60, "w":61, "s":62, "e":63, "d":64, "f":65, "t":66, "g":67, "y":68, "h":69, "u":70, "j":71, "k":72}
-    _PGKEY = [K_a, K_w, K_s, K_e, K_d, K_f, K_t, K_g, K_y, K_h, K_u, K_j, K_k]
-    _SCREEN_SIZE = (640, 480)
-    
-    def __init__(self, pitch=440, rate=44100, bufsize=500):
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
-        self.model = []
-    
-    
-    
-    def stack(self, module):
-        """ * モジュールの追加に使うメソッド *
-            モジュールの追加にかんする制約やエラーの検出を行う
-            args:
-                + module : 追加するモジュール
-        """
-        self.model.append(module)
- 
-        
-    def completed(self):
-        self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(format=pyaudio.paInt16, channels=1, 
-                                    frames_per_buffer=self._BUF_SIZE, rate=self._RATE, output=True)
-        
-        for module in self.model:
-            if module.name == "SineWave":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "SquareWave":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "MidiFromPCkey":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "SimpleAmp":
-                module._standby(stream=self.stream, pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "TriangleWave":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "Cabinet":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-            elif module.name == "WizavoPCM":
-                module._standby(pitch=self._PITCH, rate=self._RATE, bufsize=self._BUF_SIZE)
-        
-    def play(self):
-        """出力された音声データのみ取得するメソッド"""
-        while True:
-            start = time.time()
-            for module in self.model:
-                if module.name == "SineWave":
-                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)
-                elif module.name == "TriangleWave":
-                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)
-                elif module.name == "SquareWave":
-                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)    
-                elif module.name == "WizavoPCM":
-                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)  
-                elif module.name == "MidiFromPCkey":
-                    self.freqs, self.offsets, self.amp = module._play()
-                elif module.name == "SimpleAmp":
-                    module._play(self.wave)
-                elif module.name == "Cabinet":
-                    self.wave = module._play(self.freqs, self.offsets, self.amp, self._BUF_SIZE)
-
-
-# In[7]:
+# In[ ]:
 
 
 class Cabinet():
+    pass
+
+
+# In[ ]:
+
+
+class _Cabinet():
     def __init__(self, modules, ratio, pitch=440, rate=44100, bufsize=500):
         # リストサイズに関するエラー検出
         if len(modules) != len(ratio):
