@@ -82,7 +82,7 @@ You may need to install other dependencies. In that case, reference some detail 
     ```python
     synth.play()
     ```
-Detail and other example are in [pysynth/example](pysynth/example). Please refer to that.
+Detail and other example are in [pysynth/example](/example). Please refer to that.
     
 ## Author
 - Name: FooU*
