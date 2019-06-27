@@ -47,6 +47,7 @@ class Series(object):
         self.R_flag = Parameter(False, self, name="R_flag")
         
         
+        
     def implement(self, module):
         module_name = module.__module__
         if module_name != "controller":

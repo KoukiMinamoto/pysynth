@@ -34,15 +34,3 @@ synth.implement(env)
 synth.completed()
 synth.play()
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-

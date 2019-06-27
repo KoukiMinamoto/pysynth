@@ -22,7 +22,7 @@ class Controller(object):
 
 class Envelope(Controller):
 
-    def __init__(self, A=0.0, D=0.0, S=1.0, R=0.0):
+    def __init__(self, A=0.1, D=0.1, S=1.0, R=0.1):
         self.A = A
         self.D = D
         self.S = S
