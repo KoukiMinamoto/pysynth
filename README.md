@@ -34,7 +34,7 @@ You may need to install other dependencies. In that case, reference some detail 
     or  
     `.bash_profile`
     ```sh
-    eport PYTHONPATH='<The directory path of pysynth>'
+    export PYTHONPATH='<The directory path of pysynth>'
     ```
 
 ## Usage with Example
