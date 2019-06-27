@@ -35,7 +35,7 @@ class MidiFromPCkey():
         self._PGKEY = [K_a, K_w, K_s, K_e, K_d, K_f, K_t, K_g, K_y, K_h, K_u, K_j, K_k]
         self._SCREEN_SIZE = (640, 480)
     
-    def standby(self, synth, pitch=440, rate=44100, bufsize=500):
+    def standby(self, synth):
         # 親となるSynthクラス
         self.parent = synth
         
@@ -46,9 +46,9 @@ class MidiFromPCkey():
         self.pre_offset = [-1] * 128
         
         # その他情報
-        self._PITCH = pitch
-        self._RATE = rate
-        self._BUF_SIZE = bufsize
+        self._PITCH = self.parent._PITCH
+        self._RATE = self.parent._RATE
+        self._BUF_SIZE = self.parent._BUF_SIZE
         
         # pygameの初期設定
         pygame.init()
@@ -90,7 +90,7 @@ class MidiFromPCkey():
                     self.parent.note_on.fix(0, note_num=note_num)
                     #self.parent.velocity.fix(0, note_num=note_num)
                     
-                elif downs[K_z] == True:
+                if downs[K_z] == True:
                     self.parent.power = False
                         
             
@@ -102,15 +102,16 @@ class MidiFromPCkey():
                 self.parent.offset.fix(0, i)
                 self.parent.R_flag.fix(False, i)
             elif self.pre_note_on[i] == 1 and self.parent.note_on.get(i) == 1:
-                self.parent.offset.fix(self.pre_offset[i]+self._BUF_SIZE, i)
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
             elif self.pre_note_on[i] == 1 and self.parent.note_on.get(i) == 0:
-                self.parent.offset.fix(self.pre_offset[i]+self._BUF_SIZE, i)
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
                 self.parent.R_flag.fix(True, i)
             elif self.pre_note_on[i] == 0 and self.parent.note_on.get(i) == 0 and self.parent.R_flag.get(i) == True:
-                self.parent.offset.fix(self.pre_offset[i]+self._BUF_SIZE, i)
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
         
         self.pre_note_on = copy.deepcopy(self.parent.note_on.getall())
-        self.pre_offset = copy.deepcopy(self.parent.offset.getall())
+        for i in range(128):
+            self.parent.pre_offset.fix(self.parent.offset.get(i), i)
                 
         
 

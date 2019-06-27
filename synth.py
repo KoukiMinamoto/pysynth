@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[3]:
 
 
 import numpy as np
 import pyaudio
 import threading
+import wave
 import pygame
 from pygame.locals import *
 import time
@@ -34,11 +35,15 @@ class Series(object):
         self.controller = []
         self.pre_note_on = [0] * 128
         self.power = True
+        self.out_file_name = ""
+        self.file_out = False
+        self.all_out_data = []
         
         self.note_on = Parameter(0, self, 0, 1, "note_on")
         self.velocity = Parameter(0, self, 0, 127, "velocity")
         self.wave_data = Parameter(np.zeros(self._BUF_SIZE), self, -32768, 32767, "wave_data")
         self.offset = Parameter(-1, self, -1, None, "offset")
+        self.pre_offset = Parameter(-1, self, -1, None, "pre_offset")
         self.R_flag = Parameter(False, self, name="R_flag")
         
         
@@ -115,15 +120,26 @@ class Series(object):
                 self.pre_note_on[i] = self.note_on.get(i)
             
             if self.stream.is_active():
+                if self.file_out == True:
+                    self.all_out_data.append(out_data.astype(np.int16))
                 self.stream.write(out_data.astype(np.int16).tostring())
-                
+        
+        print("Abandoned your synth.")
         self.abandon()
         
         return True
         
     def abandon(self):
+        if self.file_out == True:
+            self.all_out_data = np.concatenate(self.all_out_data)
+            w = wave.Wave_write(self.out_file_name)
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(self._RATE)
+            w.writeframes(self.all_out_data)
+            w.close()
+            
         pygame.quit()   
-        self.stream.stop()
         self.stream.close()
         self.p.terminate()
         

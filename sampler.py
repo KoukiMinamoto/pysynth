@@ -64,31 +64,73 @@ class Sampler():
         offset = self.parent.offset
         vel = self.parent.velocity
         
-        for i in range(60-self.croma_range, 60+self.croma_range+1):
-            if offset.get(i) != -1:
-                len_diff = self.out_data.get(i).size - offset.get(i)
-                if len_diff <= 0:
-                    wave = np.zeros(self._BUF_SIZE)
-                elif len_diff < self._BUF_SIZE:
-                    wave = vel.get(i)/127 * self.out_data.get(i)[offset.get(i): offset.get(i)+len_diff]
-                    for j in range(self._BUF_SIZE - len_diff):
-                        wave = np.append(wave, 0.0)
-                    self.parent.offset.fix(-1, i)
-                else:
-                    wave = self.out_data.get(i)[offset.get(i): offset.get(i)+self._BUF_SIZE]
-                self.parent.wave_data.fix(wave, i)
+        if self.loop == False:
+            for i in range(60-self.croma_range, 60+self.croma_range+1):
+                if offset.get(i) != -1:
+                    len_diff = self.out_data.get(i).size - offset.get(i)
+                    if len_diff <= 0:
+                        wave = np.zeros(self._BUF_SIZE)
+                    elif len_diff < self._BUF_SIZE:
+                        wave = vel.get(i)/127 * self.out_data.get(i)[offset.get(i): offset.get(i)+len_diff]
+                        for j in range(self._BUF_SIZE - len_diff):
+                            wave = np.append(wave, 0.0)
+                        self.parent.offset.fix(-1, i)
+                    else:
+                        wave = vel.get(i)/127 * self.out_data.get(i)[offset.get(i): offset.get(i)+self._BUF_SIZE]
+                    self.parent.wave_data.fix(wave, i)
+
+                elif offset.get(i) == -1:
+                    pass
+        else:
+            for i in range(60-self.croma_range, 60+self.croma_range+1):
+                if self.parent.offset.get(i) != -1:
+                    start_pos = (self.out_data.get(i).size * self.pos) - ((self.out_data.get(i).size * self.pos) % self._BUF_SIZE)
+                    end_pos = (self.out_data.get(i).size * (self.pos+self.length)) - ((self.out_data.get(i).size * (self.pos+self.length)) % self._BUF_SIZE)
+                    fade_pos = end_pos - ((end_pos - start_pos) * self.fade) - (((end_pos - start_pos) * self.fade) % self._BUF_SIZE)
+                    prefade_pos = start_pos - ((end_pos - start_pos) * self.fade) - (((end_pos - start_pos) * self.fade) % self._BUF_SIZE)
+                    factor = 1.0 / (end_pos - fade_pos + 1)
+                        
+                    if self.parent.R_flag.get(i) == True:
+                        len_diff = self.out_data.get(i).size - self.parent.offset.get(i)
+                        if len_diff <= 0:
+                            wave = np.zeros(self._BUF_SIZE)
+                            self.parent.wave_data.fix(wave, i)
+                        elif len_diff < self._BUF_SIZE:
+                            wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+len_diff]
+                            for j in range(self._BUF_SIZE - len_diff):
+                                wave = np.append(wave, 0.0)
+                            self.parent.offset.fix(-1, i)
+                            self.parent.wave_data.fix(wave, i)
+                        else:
+                            wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                            self.parent.wave_data.fix(wave, i)
+                    elif self.parent.R_flag.get(i) == False:
+                        if self.parent.offset.get(i) < start_pos:
+                            wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                            self.parent.wave_data.fix(wave, i)
+                            #print("通りました")
+                        elif self.parent.offset.get(i) >= start_pos:
+                            if self.parent.offset.get(i) < fade_pos:
+                                wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                                self.parent.wave_data.fix(wave, i)
+                            elif self.parent.offset.get(i) >= end_pos:
+                                self.parent.pre_offset.fix(int(start_pos), i)
+                                wave = vel.get(i)/127 * self.out_data.get(i)[int(start_pos): int(start_pos)+self._BUF_SIZE]
+                                self.parent.wave_data.fix(wave, i)
+                            elif self.parent.offset.get(i) >= fade_pos:
+                                wave = (1.0 - (factor * (end_pos - self.parent.offset.get(i)))) * vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                                wave = wave + factor * (end_pos - self.parent.offset.get(i)) * vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                                self.parent.wave_data.fix(wave, i)
                 
-            elif offset.get(i) == -1:
-                pass
+
+
                 
-    def loop(self, pos, length, fade):
+    def loopON(self, pos, length, fade):
         self.loop = True
         self.pos = pos
         self.length = length
         self.fade = fade
         
-    def _loop(self):
-        pass
         
     def _upsampling(self, rate):
         """
@@ -154,28 +196,7 @@ class Sampler():
                 for j in range(int(nsample)):
                     data.pop(i+1)
             except IndexError:
-                pass
-        
-        print("size: ", len(data))    
+                pass 
         return np.array(data, dtype=np.int16)
-
-    def _sine(self):
-        wave_data = []
-        offset = self.parent.offset
-        vel = self.parent.velocity
-        
-        for i in range(128):
-            freq = self._PITCH * np.power(2, (self.interval.get(i)+i-69)/12)
-            freq = freq * np.power(2, self.fine.get(i)/100)
-            self.freq.fix(freq, i)
-        freq = self.freq
-        
-        for i in range(128):
-            if offset.get(i) != -1:
-                factor = float(freq.get(i)) * (np.pi*2) / self._RATE
-                wave = np.sin(np.arange(offset.get(i), offset.get(i)+self._BUF_SIZE) * factor) * 32767/127 * vel.get(i)
-                self.parent.wave_data.fix(wave, i)
-            elif offset.get(i) == -1:
-                pass
     
 
