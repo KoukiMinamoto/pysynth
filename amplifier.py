@@ -20,7 +20,7 @@ class SimpleAmp():
         
         self._PITCH = 440
         self._RATE = 44100
-        self._BUF_SIZE = 500
+        self._BUF_SIZE = 512
         self.volume = volume
         
         self.amp = Parameter(np.zeros(self._BUF_SIZE), self, -32768, 32767, name="amp", controllable=True)
@@ -33,6 +33,7 @@ class SimpleAmp():
         
     def play(self):
         for i in range(128):
+            #print(np.shape(self.parent.wave_data.get(i)))
             self.amp.fix(self.volume*self.parent.wave_data.get(i), i)        
 
 

@@ -27,7 +27,7 @@ class Series(object):
             + rate=44100 : サンプリングレート
             + bufsize=500 : バッファサイズ
     """
-    def __init__(self, pitch=440, rate=44100, bufsize=500):
+    def __init__(self, pitch=440, rate=44100, bufsize=512):
         self._PITCH = pitch
         self._RATE = rate
         self._BUF_SIZE = bufsize
@@ -97,6 +97,7 @@ class Series(object):
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(format=pyaudio.paInt16, channels=1, 
                                     frames_per_buffer=self._BUF_SIZE, rate=self._RATE, output=True)
+        self.stream.stop_stream()
         
         for module in self.model:
             module.standby(synth=self)
@@ -108,6 +109,8 @@ class Series(object):
         
         
     def play(self):
+        self.power = True
+        self.stream.start_stream()
         while self.power == True:
             for module in self.model:
                 module.play()
@@ -116,19 +119,36 @@ class Series(object):
             out_data = np.zeros(self._BUF_SIZE)
             for i in range(128):
                 out_data = out_data + self.model[len(self.model)-1].amp.get(i)
-            
+
             for i in range(128):
                 self.pre_note_on[i] = self.note_on.get(i)
-            
+
             if self.stream.is_active():
                 if self.file_out == True:
                     self.all_out_data.append(out_data.astype(np.int16))
                 self.stream.write(out_data.astype(np.int16).tostring())
+
         
-        print("Abandoned your synth.")
-        self.abandon()
+        print("Stop your synth.")
+        self.stop()
         
         return True
+    
+    def power_off(self):
+        self.power = False
+        
+    def stop(self):
+        # ストリームを停止
+        self.stream.stop_stream()
+        # プロパティの初期化
+        self.pre_note_on = [0] * 128
+        self.note_on = Parameter(0, self, 0, 1, "note_on")
+        self.velocity = Parameter(0, self, 0, 127, "velocity")
+        self.wave_data = Parameter(np.zeros(self._BUF_SIZE), self, -32768, 32767, "wave_data")
+        self.offset = Parameter(-1, self, -1, None, "offset")
+        self.pre_offset = Parameter(-1, self, -1, None, "pre_offset")
+        self.R_flag = Parameter(False, self, name="R_flag")
+        
         
     def abandon(self):
         if self.file_out == True:

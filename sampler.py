@@ -5,11 +5,15 @@
 
 
 import wave
-import numpy
+import numpy as np
 import pyaudio
 import math
 import scipy.signal
+from scipy import arange, around, array, linspace
+from scipy.interpolate import interp1d
+from scipy.signal import resample
 from synth import *
+import numba
 
 
 # In[ ]:
@@ -30,18 +34,15 @@ class Sampler():
         self.terminate = False
         self.loop = False
         self.wavefile = wavefile
-        self.interval = Parameter(interval, self, 0, 12, name="interval", controllable=True)
-        self.fine = Parameter(fine, self, 0, 100,  name="fine", controllable=True)
+        self.interval = Parameter(interval, self, 0, None, name="interval", controllable=True)
+        self.fine = Parameter(fine, self, 0, None,  name="fine", controllable=True)
         self.freq = Parameter(0, self, 0.0, None, "freq")
-        
-        self._PITCH = 440
-        self._RATE = 44100
-        self._BUF_SIZE = 500
         
         self.wr = wave.open(self.wavefile, "rb")
         self.data = self.wr.readframes(self.wr.getnframes())
+        print(self.wr.getnframes())
         self.data = np.frombuffer(self.data, count=self.wr.getnframes(), offset=0, dtype=np.int16)
-        
+        print(np.shape(self.data))
         
     def standby(self, synth):
         self.parent = synth
@@ -52,15 +53,14 @@ class Sampler():
         self.out_data = Parameter(0, self, -32768, 32767, name="out_data")
         self.out_data.fix(self.data, 60)
         for i in range(self.croma_range):
-            data = self._downsampling(np.power(2, (i+1)/12))
+            data = self.resampling(self.data, np.power(2, (i+1)/12))
             self.out_data.fix(data, 60+i+1)
-            #print(self.out_data.get(60+i+1))
-            data = self._upsampling(np.power(2, -(i+1)/12))
+            data = self.resampling(self.data, np.power(2, -(i+1)/12))
             self.out_data.fix(data, 60-(i+1))
             
     
     def play(self):
-        wave_data = []
+        wave_data = np.zeros(self._BUF_SIZE)
         offset = self.parent.offset
         vel = self.parent.velocity
         
@@ -74,9 +74,10 @@ class Sampler():
                         wave = vel.get(i)/127 * self.out_data.get(i)[offset.get(i): offset.get(i)+len_diff]
                         for j in range(self._BUF_SIZE - len_diff):
                             wave = np.append(wave, 0.0)
-                        self.parent.offset.fix(-1, i)
                     else:
                         wave = vel.get(i)/127 * self.out_data.get(i)[offset.get(i): offset.get(i)+self._BUF_SIZE]
+                    if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                     self.parent.wave_data.fix(wave, i)
 
                 elif offset.get(i) == -1:
@@ -99,27 +100,38 @@ class Sampler():
                             wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+len_diff]
                             for j in range(self._BUF_SIZE - len_diff):
                                 wave = np.append(wave, 0.0)
-                            self.parent.offset.fix(-1, i)
+                            if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                             self.parent.wave_data.fix(wave, i)
                         else:
                             wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                            if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                             self.parent.wave_data.fix(wave, i)
                     elif self.parent.R_flag.get(i) == False:
                         if self.parent.offset.get(i) < start_pos:
                             wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                            if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                             self.parent.wave_data.fix(wave, i)
                             #print("通りました")
                         elif self.parent.offset.get(i) >= start_pos:
                             if self.parent.offset.get(i) < fade_pos:
                                 wave = vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                                if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                                 self.parent.wave_data.fix(wave, i)
                             elif self.parent.offset.get(i) >= end_pos:
                                 self.parent.pre_offset.fix(int(start_pos), i)
                                 wave = vel.get(i)/127 * self.out_data.get(i)[int(start_pos): int(start_pos)+self._BUF_SIZE]
+                                if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                                 self.parent.wave_data.fix(wave, i)
                             elif self.parent.offset.get(i) >= fade_pos:
                                 wave = (1.0 - (factor * (end_pos - self.parent.offset.get(i)))) * vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
                                 wave = wave + factor * (end_pos - self.parent.offset.get(i)) * vel.get(i)/127 * self.out_data.get(i)[self.parent.offset.get(i): self.parent.offset.get(i)+self._BUF_SIZE]
+                                if self.fine.get(i) != 0:
+                                    wave = self.pitch_shift(wave, np.power(2, self.fine.get(i)/100))
                                 self.parent.wave_data.fix(wave, i)
                 
 
@@ -131,8 +143,57 @@ class Sampler():
         self.length = length
         self.fade = fade
         
+    def resampling(self, sig, pitchChangeRate, kind = "fourier"):
+        sig = sig.tolist()
+        L = len(sig)
+        new_L = int(round(L / float(pitchChangeRate)))
+
+        if kind == "fourier":
+            new_sig = resample(sig, new_L)
+        else:
+            f = interp1d(arange(L), sig, kind = "linear")
+            new_x = linspace(0, L - 1, num = new_L)
+            new_sig = f(new_x)
+
+        return np.array(new_sig, dtype=np.int16)
+    
+    def time_stretch(self, data, rate):
+        rate = 1/rate
+        W = 64
+        fade_W = int(W/4)
+        result = data[:W]
+        for i in range(1, int(data.size/rate)):
+            w0_start = int(rate * i * W)
+            w0_fade = data[w0_start: w0_start+fade_W]
+            w0 = data[w0_start+fade_W: w0_start+W]
+            pre_fade = data[int(rate * (i-1) * W) + W: int(rate * (i-1) * W) + W + fade_W]
+
+            coeff_pre = np.linspace(1, 0, fade_W)
+            coeff_fade = np.linspace(0, 1, fade_W)
+            if pre_fade.size == fade_W and w0_fade.size == fade_W:
+                pre_fade = pre_fade * coeff_pre
+                w0_fade = w0_fade * coeff_fade
+                fade = pre_fade + w0_fade
+                result = np.concatenate([result, fade, w0])
+            else:
+                pass
+            
+        return result
+    
+    def pitch_shift(self, data, rate):
+        data_len = data.size
+        #data = self.time_stretch(data, rate)
+        data = self.resampling(data, rate)
         
-    def _upsampling(self, rate):
+        while data_len > data.size:
+            data = np.append(data, data[-1])
+            
+        if data_len < data.size:
+            data = data[:self._BUF_SIZE]
+        
+        return data
+        
+    def _upsampling(self, data, rate):
         """
         アップサンプリングを行う．
         入力として，変換レートとデータとサンプリング周波数．
@@ -141,7 +202,7 @@ class Sampler():
         # 補間するサンプル数を決める
         interpolationSampleNum = rate - 1
         
-        data = self.data.tolist()
+        data = data.tolist()
 
         # FIRフィルタの用意をする
         nyqF = self._RATE/2.0
@@ -165,7 +226,7 @@ class Sampler():
         return np.array(resultData, dtype=np.int16)
    
     
-    def _downsampling(self, rate):
+    def _downsampling(self, data, rate):
         """
         ダウンサンプリングを行う．
         入力として，変換レートとデータとサンプリング周波数．
@@ -181,8 +242,9 @@ class Sampler():
         b = scipy.signal.firwin(taps, cF)           # LPFを用意
 
         #フィルタリング
-        data = scipy.signal.lfilter(b,1,self.data)
+        data = scipy.signal.lfilter(b,1,data)
         data = data.tolist()
+        #print(len(data))
 
         #間引き処理
         left = 0
@@ -197,6 +259,14 @@ class Sampler():
                     data.pop(i+1)
             except IndexError:
                 pass 
+        
         return np.array(data, dtype=np.int16)
     
+    
+
+
+# In[ ]:
+
+
+
 
