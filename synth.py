@@ -34,10 +34,12 @@ class Series(object):
         self.model = []
         self.controller = []
         self.pre_note_on = [0] * 128
+        self.power_off_signal = False
         self.power = True
         self.out_file_name = ""
         self.file_out = False
         self.all_out_data = []
+        self.serial_data = 0.
         
         self.note_on = Parameter(0, self, 0, 1, "note_on")
         self.velocity = Parameter(0, self, 0, 127, "velocity")
@@ -110,6 +112,7 @@ class Series(object):
         
     def play(self):
         self.power = True
+        self.power_off_signal = False
         self.stream.start_stream()
         while self.power == True:
             for module in self.model:
@@ -135,7 +138,7 @@ class Series(object):
         return True
     
     def power_off(self):
-        self.power = False
+        self.power_off_signal = True
         
     def stop(self):
         # ストリームを停止

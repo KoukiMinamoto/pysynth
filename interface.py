@@ -7,14 +7,113 @@
 import numpy as np
 import copy
 import pretty_midi
-import pyaudio
-import threading
 import matplotlib.pyplot as plt
 import pygame
 from pygame.locals import *
 import pygame.midi
 from synth import *
 import serial
+
+
+# In[ ]:
+
+
+class SingNoteSequence(object):
+    def __init__(self, note_sequence=None, port=None):
+        self.name = "SingNoteSequence"
+        
+        self._PITCH = 440
+        self._RATE = 44100
+        self._BUF_SIZE = 512
+        self.frame = 0
+        self.note_sequence = note_sequence
+        self.port = port
+
+    def standby(self, synth):
+        # 親となるSynthクラス
+        self.parent = synth
+        
+        # 臨時的な変数
+        self.playing_note = 0
+        self.pre_note_on = [0] * 128
+        self.pre_note_num = 0
+        if self.note_sequence != None:
+            self.frame = 0
+            self.qpm = self.note_sequence.tempos[0].qpm
+            self.last_time = max(n.end_time for n in self.note_sequence.notes) if self.note_sequence.notes else 0
+        
+        # その他情報
+        self._PITCH = self.parent._PITCH
+        self._RATE = self.parent._RATE
+        self._BUF_SIZE = self.parent._BUF_SIZE
+        
+        
+    def play(self):
+        """ * メインの処理を実行するメソッド *
+            -return:
+                Note-ON/OFF: 各ノートナンバーに対して、キーのON/OFFを1/0で返します。 shape=(128,1)
+                Velocity: 各ノートナンバーに対応するベロシティの大きさを返します。 shape=(128, 1)
+        """
+        note_on_flag = False
+        quote_time = self.qpm/60 * self.frame/self._RATE
+        for i, note in enumerate(self.note_sequence.notes):
+            if quote_time >= note.start_time and quote_time < note.end_time:
+                if self.playing_note != i:
+                    self.parent.note_on.fix(0, note_num=note.pitch)
+                elif self.playing_note == i:
+                    self.parent.note_on.fix(1, note_num=note.pitch)
+                    self.parent.velocity.fix(127, note_num=note.pitch)
+                self.playing_note = i
+                note_on_flag = True
+            elif quote_time > note.end_time:
+                self.parent.note_on.fix(0, note_num=note.pitch)
+        
+        if (self.frame/self._BUF_SIZE)%100 == 0:
+            angle = self.parent.serial_data // 10.
+            print("serial_data", self.parent.serial_data)
+            angle = 9 - abs(angle)
+            angle = int(angle)
+            if angle <= 0:
+                angle = 0
+            print("angle: ", angle)
+            if self.port != None:
+                with serial.Serial(self.port,9600,timeout=1) as ser:
+                    flag=bytes(str(angle),'utf-8')
+                    ser.write(flag)
+              
+        if quote_time > self.last_time:
+            self.parent.power_off()
+            
+        self.frame = self.frame + self._BUF_SIZE
+        # オフセットの計算。絶対する。
+        self._compute_offset()
+        
+    
+    def set_note_sequence(self, note_sequence):
+        self.note_sequence = note_sequence
+        self.frame = 0
+        self.qpm = self.note_sequence.tempos[0].qpm
+        self.last_time = max(n.end_time for n in self.note_sequence.notes) if self.note_sequence.notes else 0
+        
+        
+    
+    # オフセットの計算。これはいじらない。
+    def _compute_offset(self):
+        for i in range(128):
+            if self.pre_note_on[i] == 0 and self.parent.note_on.get(i) == 1:
+                self.parent.offset.fix(0, i)
+                self.parent.R_flag.fix(False, i)
+            elif self.pre_note_on[i] == 1 and self.parent.note_on.get(i) == 1:
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
+            elif self.pre_note_on[i] == 1 and self.parent.note_on.get(i) == 0:
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
+                self.parent.R_flag.fix(True, i)
+            elif self.pre_note_on[i] == 0 and self.parent.note_on.get(i) == 0 and self.parent.R_flag.get(i) == True:
+                self.parent.offset.fix(self.parent.pre_offset.get(i)+self._BUF_SIZE, i)
+        
+        self.pre_note_on = copy.deepcopy(self.parent.note_on.getall())
+        for i in range(128):
+            self.parent.pre_offset.fix(self.parent.offset.get(i), i)
 
 
 # In[ ]:
@@ -403,7 +502,7 @@ class FromMidiFile():
                 
         self.frame = self.frame + 1
         if self.frame == self.piano_roll[0].size:
-            self.parent.power = False
+            self.parent.power_off()
         
         self._compute_offset()
         

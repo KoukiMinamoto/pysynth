@@ -96,6 +96,8 @@ class Envelope(Controller):
                         self.parent.offset.fix(0, i)
                         self.parent.velocity.fix(0, i)
                         self.parent.R_flag.fix(False, i)
+                        if self.parent.power_off_signal == True:
+                            self.parent.power = False
                 else:
                     pass
                     
@@ -134,7 +136,12 @@ class Envelope(Controller):
                     bias = parameter.inival[i] + self.pre_mult[parameter][i]
                     mult = factor*(offset-self.offset_sofar[parameter][i])
                     #print("mult: ", mult)
-                    parameter.fix(bias - mult, i)
+                    if self.scale[parameter] >= 0 and (bias - mult) > parameter.inival[i]:
+                        parameter.fix(bias - mult, i)
+                    elif self.scale[parameter] < 0 and (bias - mult) < parameter.inival[i]:
+                        parameter.fix(bias - mult, i)
+                    else:
+                        parameter.fix(parameter.inival[i], i)
                 else:
                     pass
 
@@ -194,6 +201,7 @@ class ArduinoController(object):
                 #print("値が変わりました。")
             try:
                 self.delta = float(self.data[0])
+                self.parent.serial_data = self.delta
                 #print(self.delta)
             except ValueError:
                 pass

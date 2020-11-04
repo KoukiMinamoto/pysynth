@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -11,7 +11,7 @@ import wave
 from synth import *
 
 
-# In[5]:
+# In[2]:
 
 
 class SimpleAmp():
