@@ -92,7 +92,7 @@ tb_if = tb.stack(SingNoteSequence(port=port))
 tb_osc = tb.stack(PulseWave(interval=12))
 #tb_LPC = LPC(a=a)
 tb_lp = tb.stack(Lowpass(fs=1000, fp=10000))
-tb_amp = tb.stack(SimpleAmp(volume=0.7))
+tb_amp = tb.stack(SimpleAmp(volume=1.5))
 
 tbe_amp = Envelope(A=0.01, D=0.2, S=0.6, R=0.5)
 tbe_amp.assign(tb_amp.amp)
@@ -109,7 +109,7 @@ peep = Series()
 peep_if = peep.stack(SingNoteSequence())
 peep_osc = peep.stack(PulseWave(interval=24))
 peep_lp = peep.stack(Lowpass(fs=1000, fp=10000))
-peep_amp = peep.stack(SimpleAmp(volume=0.9))
+peep_amp = peep.stack(SimpleAmp(volume=1.0))
 
 penv_amp = Envelope(A=0.01, D=0.5, S=0.6, R=0.2)
 penv_amp.assign(peep_amp.amp)
@@ -157,6 +157,7 @@ with serial.Serial(port, 9600,timeout=1) as ser:
 
 # 開始
 # 顔認識
+'''
 fd_thread.start()
 
 # 周りの様子を疑う
@@ -183,7 +184,9 @@ while True:
             flag=bytes('0','utf-8')
             ser.write(flag)
         break
+'''
 
+bp_thread.start()
 while True:
     while True:
         if bp.state == 1:
@@ -237,10 +240,4 @@ while True:
 with serial.Serial(port, 9600,timeout=1) as ser:
     flag=bytes('0','utf-8')
     ser.write(flag)
-
-
-# In[ ]:
-
-
-
 

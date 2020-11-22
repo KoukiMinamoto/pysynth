@@ -58,10 +58,10 @@ class BeatPlayer(object):
             maximum = i + self.chunk
             for j, pos in enumerate(self.quote_pos):
                 if pos >= minimum and pos < maximum:
-                    self.state = (j % 4) + 1
+                    self.state = (j % 8) + 1
                     print(self.state)
                 else:
-                    self.state = -1
+                    pass
         
             i = i + self.chunk
         

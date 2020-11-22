@@ -97,11 +97,11 @@ tb_amp = tb.stack(SimpleAmp(volume=0.7))
 tbe_amp = Envelope(A=0.01, D=0.2, S=0.6, R=0.5)
 tbe_amp.assign(tb_amp.amp)
 tbe_amp.assign(tb_lp.ws, 0.2)
-tbe_cont = ArduinoController(com=port, baudrate=9600)
-tbe_cont.assign(tb_osc.fine, 200.)
+#tbe_cont = ArduinoController(com=port, baudrate=9600)
+#tbe_cont.assign(tb_osc.fine, 200.)
 
 tb.implement(tbe_amp)
-tb.implement(tbe_cont)
+#tb.implement(tbe_cont)
 tb.completed()
 
 # 鳴声用シンセの設定

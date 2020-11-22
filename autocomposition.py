@@ -29,16 +29,16 @@ class AutoComposition():
     def generate(self, input_sequence):
         
         num_steps = 100 # change this for shorter or longer sequences
-        temperature = 0.8 # the higher the temperature the more random the sequence.
+        temperature = 1.0 # the higher the temperature the more random the sequence.
 
         # Set the start time to begin on the next step after the last note ends.
         last_end_time = (max(n.end_time for n in input_sequence.notes) if input_sequence.notes else 0)
         qpm = input_sequence.tempos[0].qpm 
         seconds_per_step = 60.0 / qpm / self.melody_rnn.steps_per_quarter
         total_seconds = num_steps * seconds_per_step
-        print("steps_per_quarter: ", self.melody_rnn.steps_per_quarter)
-        print("seconds_per_step: ", seconds_per_step)
-        print("total_seconds: ", total_seconds)
+        #print("steps_per_quarter: ", self.melody_rnn.steps_per_quarter)
+        #print("seconds_per_step: ", seconds_per_step)
+        #print("total_seconds: ", total_seconds)
 
         generator_options = generator_pb2.GeneratorOptions()
         generator_options.args['temperature'].float_value = temperature
@@ -50,8 +50,29 @@ class AutoComposition():
         sequence = self.melody_rnn.generate(input_sequence, generator_options)
 
         #print(sequence)
-        note_seq.plot_sequence(sequence)
-        note_seq.play_sequence(sequence)
+        #note_seq.plot_sequence(sequence)
+        #note_seq.play_sequence(sequence)
         
         return sequence
+    
+    def round_in_bar(self, note_sequence, bar):
+        elim_index = []
+        bar = note_sequence.total_time - bar
+        for note in note_sequence.notes:
+            note.start_time = note.start_time - bar
+            note.end_time = note.end_time - bar
+            
+        for i, note in enumerate(note_sequence.notes):
+            if note.start_time < 0:
+                note.start_time = 0
+            if note.end_time < 0:
+                note.end_time = 0
+        
+        note_sequence.total_time = bar
+        #note_seq.plot_sequence(note_sequence)
+        
+        return note_sequence
+        
+        
+            
 

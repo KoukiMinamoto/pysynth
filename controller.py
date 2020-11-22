@@ -43,6 +43,7 @@ class Envelope(Controller):
         self._Aframe = self.A * self._RATE
         self._Dframe = self.D * self._RATE
         self._Rframe = self.R * self._RATE
+        
     
     def assign(self, parameter, scale=None):
         self.scale[parameter] = scale
@@ -158,6 +159,7 @@ class ArduinoController(object):
         self.BAUDRATE = baudrate
         self.SERIAL = serial.Serial(self.COM, self.BAUDRATE, timeout=0.1)
         self.data = []
+        self.ini_data = 0.
         self.delta = 0.0
         
         # Controller共通パラメータ
@@ -172,6 +174,15 @@ class ArduinoController(object):
         self._PITCH = self.parent._PITCH
         self._RATE = self.parent._RATE
         self._BUF_SIZE = self.parent._BUF_SIZE
+        
+        data_cur = self.SERIAL.read_all()
+        data_cur = data_cur.decode()
+        if data_cur != '':
+            self.data = data_cur.split("\r\n")
+        try:
+            self.ini_data = float(self.data[0])
+        except ValueError:
+             pass
     
     def assign(self, parameter, scale=None):
         self.scale[parameter] = scale
@@ -211,6 +222,6 @@ class ArduinoController(object):
             # rotXをパラメータにとった場合
             #data = parameter.get(i) + 0.1*self.delta
             # rollをパラメータにとった場合
-            data = parameter.inival[i] + self.scale[parameter] * self.delta / 180.0
+            data = parameter.inival[i] + self.scale[parameter] * (self.delta-self.ini_data) / 180.0
             parameter.fix(data, i)
 

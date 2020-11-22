@@ -13,20 +13,75 @@ import time
 import copy
 
 
-# In[7]:
+# In[ ]:
 
 
 class MIDIKeyboard():
-    def __init__(self, buf_size=512, pitch=440, rate=44100):
+    def __init__(self, buf_size=512, pitch=440, rate=44100, qpm=None):
         self.BUF_SIZE = 512
         self.PITCH = 440
         self.RATE = 44100
+        self.qpm = qpm
         
         pygame.init()
         pygame.midi.init()
         input_id = pygame.midi.get_default_input_id()
         self.midi_in = pygame.midi.Input(input_id, self.BUF_SIZE)
         
+    def wait_for_bar(self, bar=8., qpm=100):
+        wait_time = bar * 60/qpm
+        in_flag = False
+        end_flag = False
+        note_sequence = []
+        out_sequence = music_pb2.NoteSequence()
+        note = {"pitch": -1, "start_time": -1, "end_time": -1, "vel":-1}
+        s_time = -1
+        e_time = -1
+        
+        print("Listening your play...")
+        s_time = time.time()
+        
+        while end_flag == False:
+            note_on, pitch, vel, timestamp = self._getMIDI()
+            # キーボード押した時
+            if note_on == 144:
+                in_flag = True
+                note["pitch"] = pitch
+                note["vel"] = vel
+                start_time = 8.0 * (time.time()-s_time) / wait_time
+                note["start_time"] = start_time
+                note_sequence.append(copy.deepcopy(note))
+            # キーボードを離したとき   
+            elif note_on == 128:
+                still_input = False
+                for i in range(len(note_sequence)):
+                    if note_sequence[-(i+1)]["pitch"] == pitch:
+                        end_time = 8.0 * (time.time()-s_time) / wait_time
+                        note_sequence[-(i+1)]["end_time"] = end_time
+                        out_sequence.notes.add(pitch=note_sequence[-(i+1)]["pitch"], 
+                                                start_time=note_sequence[-(i+1)]["start_time"], 
+                                                end_time=note_sequence[-(i+1)]["end_time"], 
+                                                velocity=note_sequence[-(i+1)]["vel"])
+                        break
+                        
+            if (time.time()-s_time) > (wait_time-0.5):
+                for i, note in enumerate(note_sequence):
+                    if note["end_time"] == -1:
+                        note["end_time"] = bar
+                        out_sequence.notes.add(pitch=note["pitch"], 
+                                                start_time=note["start_time"], 
+                                                end_time=note["end_time"], 
+                                                velocity=note["vel"])
+                out_sequence.total_time = bar
+                out_sequence.tempos.add(qpm=qpm)
+                end_flag = True
+        #if in_flag == True:
+            #note_seq.plot_sequence(out_sequence)
+        return out_sequence, in_flag
+                
+            
+            
+    
     def wait(self, timeout=1.0, in_timeout=3.0):
         end_flag = False
         start_input = False
@@ -63,6 +118,8 @@ class MIDIKeyboard():
             elif start_input == False and note_sequence == []:
                 if e_time == -1:
                     e_time = time.time()
+                elif in_timeout == None:
+                    pass
                 elif (time.time() - e_time) > in_timeout:
                     break
                 
@@ -191,7 +248,7 @@ class MIDIKeyboard():
         note_sequence.total_time = note_sequence.notes[-1].end_time
         note_sequence.tempos.add(qpm=qpm)
         #print(note_sequence)
-        note_seq.plot_sequence(note_sequence)
+        #note_seq.plot_sequence(note_sequence)
     
         return qpm, note_sequence
                 

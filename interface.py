@@ -55,11 +55,13 @@ class SingNoteSequence(object):
                 Velocity: 各ノートナンバーに対応するベロシティの大きさを返します。 shape=(128, 1)
         """
         note_on_flag = False
+        head_pos = 1
         quote_time = self.qpm/60 * self.frame/self._RATE
         for i, note in enumerate(self.note_sequence.notes):
             if quote_time >= note.start_time and quote_time < note.end_time:
                 if self.playing_note != i:
                     self.parent.note_on.fix(0, note_num=note.pitch)
+                    head_pos = -head_pos
                 elif self.playing_note == i:
                     self.parent.note_on.fix(1, note_num=note.pitch)
                     self.parent.velocity.fix(127, note_num=note.pitch)
@@ -68,6 +70,16 @@ class SingNoteSequence(object):
             elif quote_time > note.end_time:
                 self.parent.note_on.fix(0, note_num=note.pitch)
         
+        if head_pos == 1 and self.port != None:
+            with serial.Serial(self.port,9600,timeout=1) as ser:
+                    flag=bytes('2','utf-8')
+                    ser.write(flag)
+        elif head_pos == -1 and self.port != None:
+            with serial.Serial(self.port,9600,timeout=1) as ser:
+                    flag=bytes('7','utf-8')
+                    ser.write(flag)
+        
+        '''
         if (self.frame/self._BUF_SIZE)%100 == 0:
             angle = self.parent.serial_data // 10.
             print("serial_data", self.parent.serial_data)
@@ -80,6 +92,7 @@ class SingNoteSequence(object):
                 with serial.Serial(self.port,9600,timeout=1) as ser:
                     flag=bytes(str(angle),'utf-8')
                     ser.write(flag)
+        '''
               
         if quote_time > self.last_time:
             self.parent.power_off()
